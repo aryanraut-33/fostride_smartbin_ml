@@ -1,8 +1,22 @@
-# Data
-/data/
+# Data — ignore dataset contents, but keep structural files (.md, .gitkeep)
+/data/raw/train/
+/data/raw/valid/
+/data/raw/test/
+/data/raw/roboflow.zip
+/data/raw/README.dataset.txt
+/data/raw/README.roboflow.txt
+/data/interim/*
+/data/processed/*
+/data/external/*
+!/data/raw/.gitkeep
+!/data/**/*.md
+!/data/interim/.gitkeep
+!/data/processed/.gitkeep
+!/data/external/.gitkeep
 
 # Mac OS-specific storage files
 .DS_Store
+.env
 
 # vim
 *.swp

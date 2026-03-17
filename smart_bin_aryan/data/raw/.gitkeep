@@ -1,0 +1,3 @@
+# This directory holds the raw dataset downloaded from Roboflow.
+# Run `python -m src.data.download_raw` to populate it.
+# Contents are git-ignored — see .gitignore in the repo root.
