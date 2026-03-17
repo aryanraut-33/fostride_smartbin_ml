@@ -14,6 +14,9 @@
 !/data/processed/.gitkeep
 !/data/external/.gitkeep
 
+#production files
+production_guide.md
+
 # Mac OS-specific storage files
 .DS_Store
 .env
