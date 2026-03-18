@@ -55,16 +55,41 @@ The files will automatically be placed into `smart_bin_aryan/data/raw/`.
 - **Never force-add** dataset images, `.zip` files, or intermediate processed data. The remote repository must always remain clean of large data files.
 - Ensure your `.env` file is never committed.
 
-### 4. Training the Baseline Model
+### 4. Environment Setup (Virtual Environment)
+
+To avoid dependency conflicts, it is highly recommended to use a Python virtual environment (`venv`).
+
+**For macOS / Linux:**
+```bash
+# Create a virtual environment named 'env'
+python3 -m venv env
+
+# Activate the virtual environment
+source env/bin/activate
+
+# Safely install all required libraries
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+**For Windows:**
+```powershell
+# Create a virtual environment named 'env'
+python -m venv env
+
+# Activate the virtual environment
+.\env\Scripts\activate
+
+# Safely install all required libraries
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+*(Note: When you are done working, simply type `deactivate` in your terminal to exit the virtual environment.)*
+
+### 5. Training the Baseline Model
 
 We use a PyTorch **Mask R-CNN** implementation for instance segmentation to identify the exact pixel boundaries of waste items.
-
-**Requirements:**
-Make sure you have the necessary libraries installed in your Python environment:
-
-```bash
-pip install torch torchvision numpy pycocotools tqdm Pillow
-```
 
 **Running Training:**
 To start a small-scale test run of the baseline model, execute:
@@ -75,3 +100,14 @@ python -m models.aryan.m1_baseline
 ```
 
 The script will automatically initialize the custom COCO dataloaders, build the ResNet50-FPN model, run through the training engine, and save the resultant weights to `models/best_m1_baseline.pth`.
+
+### 6. Evaluating the Model
+
+During training, the pipeline automatically evaluates the model at the end of every epoch.
+
+**Evaluation Features:**
+- **mAP Scores:** Computes Mean Average Precision (mAP, mAP@50, mAP@75) using `torchmetrics.detection.MeanAveragePrecision`.
+- **Confusion Matrix:** Tracks True Positives, False Positives, and False Negatives via IoU matching (>0.5) and plots a 4x4 Confusion Matrix for the classes.
+- **Loss Curve:** Plots the training curve across all epochs.
+
+All plots are automatically generated, saved, and updated iteratively in the `smart_bin_aryan/models/aryan/metrics/` directory during execution!
