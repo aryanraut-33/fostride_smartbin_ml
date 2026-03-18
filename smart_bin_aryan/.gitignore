@@ -8,11 +8,13 @@
 /data/interim/*
 /data/processed/*
 /data/external/*
+/data_analysis.md
 !/data/raw/.gitkeep
 !/data/**/*.md
 !/data/interim/.gitkeep
 !/data/processed/.gitkeep
 !/data/external/.gitkeep
+
 
 #production files
 production_guide.md

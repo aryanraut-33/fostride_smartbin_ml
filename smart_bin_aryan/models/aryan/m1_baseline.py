@@ -1,5 +1,7 @@
 import os
 import torch
+import matplotlib.pyplot as plt
+import seaborn as sns
 from torch.utils.data import DataLoader
 
 # Use relative imports so it runs cleanly from the project root
@@ -93,14 +95,43 @@ def main():
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 
     # 5. Training Loop
-    NUM_EPOCHS = 1
+    NUM_EPOCHS = 10
     print(f"Starting training for {NUM_EPOCHS} epoch(s)...")
     
+    # Initialize metric tracking and metrics directory
+    metrics_dir = PROJECT_ROOT / "models" / "aryan" / "metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    
+    epoch_losses = []
+    
     for epoch in range(NUM_EPOCHS):
-        train_one_epoch(model, optimizer, data_loader_train, device, epoch, print_freq=10)
+        avg_loss = train_one_epoch(model, optimizer, data_loader_train, device, epoch, print_freq=10)
         lr_scheduler.step()
+        epoch_losses.append(avg_loss)
         
-        # evaluate(model, data_loader_valid, device)
+        # Plot Loss Curve
+        plt.figure(figsize=(8, 6))
+        plt.plot(range(len(epoch_losses)), epoch_losses, marker='o', linestyle='-', color='b', label='Training Loss')
+        plt.title('Training Loss vs Epochs')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(metrics_dir / "loss_curve.png")
+        plt.close()
+        
+        # Evaluate model after epoch
+        map_dict, cm = evaluate(model, data_loader_valid, device)
+        
+        # Plot Confusion Matrix
+        plt.figure(figsize=(8, 6))
+        class_names = ['Background', 'Metal', 'Paper', 'Plastic']
+        sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+        plt.title(f'Confusion Matrix - Epoch {epoch}')
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        plt.savefig(metrics_dir / f"epoch_{epoch}_confusion_matrix.png")
+        plt.close()
         
     # 6. Save internal checkpoint
     save_path = PROJECT_ROOT / "models" / "best_m1_baseline.pth"

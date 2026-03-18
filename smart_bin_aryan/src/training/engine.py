@@ -2,7 +2,10 @@ import math
 import sys
 import time
 import torch
+import torchvision
 from tqdm import tqdm
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
+from sklearn.metrics import confusion_matrix
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10):
     """
@@ -60,24 +63,113 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
     
     return avg_loss
 
+def extract_confusion_matrix_data(preds, targets, iou_threshold=0.5, score_threshold=0.5):
+    y_true = []
+    y_pred = []
+    
+    for pred, target in zip(preds, targets):
+        pred_boxes = pred['boxes']
+        pred_scores = pred['scores']
+        pred_labels = pred['labels']
+        
+        gt_boxes = target['boxes']
+        gt_labels = target['labels']
+        
+        # Filter preds by score
+        keep = pred_scores >= score_threshold
+        pred_boxes = pred_boxes[keep]
+        pred_labels = pred_labels[keep]
+        
+        if len(gt_boxes) == 0 and len(pred_boxes) == 0:
+            continue
+            
+        if len(pred_boxes) == 0:
+            for gl in gt_labels:
+                y_true.append(gl.item())
+                y_pred.append(0)  # 0 is background
+            continue
+            
+        if len(gt_boxes) == 0:
+            for pl in pred_labels:
+                y_true.append(0)
+                y_pred.append(pl.item())
+            continue
+            
+        # Compute IoU matrix
+        ious = torchvision.ops.box_iou(gt_boxes, pred_boxes)
+        
+        # For each GT box, find the best matching prediction
+        matched_preds = set()
+        for i, gt_l in enumerate(gt_labels):
+            best_iou, best_pred_idx = ious[i].max(dim=0)
+            if best_iou >= iou_threshold:
+                y_true.append(gt_l.item())
+                y_pred.append(pred_labels[best_pred_idx].item())
+                matched_preds.add(best_pred_idx.item())
+            else:
+                y_true.append(gt_l.item())
+                y_pred.append(0) # Missed / FN
+                
+        # Any prediction not matched is a false positive
+        for j, pl in enumerate(pred_labels):
+            if j not in matched_preds:
+                y_true.append(0)
+                y_pred.append(pl.item())
+                
+    return y_true, y_pred
+
 def evaluate(model, data_loader, device):
     """
-    Returns predictions. For true COCO mAP evaluation, you would pass these 
-    outputs to the `pycocotools.cocoeval` API. This is a simplified stub.
+    Evaluates the model using Mean Average Precision (mAP) and computes
+    data for a confusion matrix.
     """
-    # model.eval() changes Mask R-CNN heavily; it returns predictions instead of losses
     model.eval()
+    metric = MeanAveragePrecision(iou_type="bbox")
+    
+    all_y_true = []
+    all_y_pred = []
     
     print("Evaluating...")
     with torch.no_grad():
         for images, targets in data_loader:
             images = list(image.to(device) for image in images)
             outputs = model(images)
-            # outputs contains: 'boxes', 'labels', 'scores', 'masks'
             
-            # To actually evaluate, these need to be aggregated and compared 
-            # against targets using pycocotools.
-            pass
+            preds = []
+            for output in outputs:
+                preds.append({
+                    "boxes": output["boxes"].cpu(),
+                    "scores": output["scores"].cpu(),
+                    "labels": output["labels"].cpu(),
+                })
             
-    print("Evaluation logic complete (pycocotools evaluation omitted for baseline brevity).")
+            target_list = []
+            for target in targets:
+                target_list.append({
+                    "boxes": target["boxes"].cpu(),
+                    "labels": target["labels"].cpu(),
+                })
+                
+            metric.update(preds, target_list)
+            
+            # Extract confusion matrix data
+            y_true, y_pred = extract_confusion_matrix_data(preds, target_list)
+            all_y_true.extend(y_true)
+            all_y_pred.extend(y_pred)
+            
+    results = metric.compute()
+    
+    # Compute confusion matrix
+    # Classes are 0=Background, 1=Metal, 2=Paper, 3=Plastic
+    cm = confusion_matrix(all_y_true, all_y_pred, labels=[0, 1, 2, 3])
+    
+    map_dict = {
+        "map": results["map"].item(),
+        "map_50": results["map_50"].item(),
+        "map_75": results["map_75"].item()
+    }
+    
+    print(f"Evaluation Results -> mAP (IoU=0.50:0.95): {map_dict['map']:.4f}, mAP@50: {map_dict['map_50']:.4f}")
+    
+    return map_dict, cm
     
