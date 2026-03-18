@@ -40,9 +40,9 @@ def main():
         )
 
     # Device configuration
-    device = torch.device("mps") if torch.backends.mps.is_available() else \
-             torch.device("cuda") if torch.cuda.is_available() else \
-             torch.device("cpu")
+device = torch.device("mps") if torch.backends.mps.is_available() else \
+         torch.device("cuda") if torch.cuda.is_available() else \
+         (_ for _ in ()).throw(RuntimeError("No GPU backend (MPS/CUDA) available"))
              
     print(f"Using device: {device}")
 
