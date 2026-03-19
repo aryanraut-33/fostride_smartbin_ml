@@ -8,8 +8,8 @@ def get_mask_rcnn_model(num_classes: int):
     pre-trained classification and mask heads with ones matching the dataset.
     
     Args:
-        num_classes (int): Number of classes in the dataset (including background).
-                           For Fostride: Background (0), Metal (1), Paper (2), Plastic (3) -> 4 classes.
+        num_classes (int): Number of object classes + 1 (for Mask R-CNN's internal background).
+                           For Fostride: Metal (1), Paper (2), Plastic (3) -> num_classes = 4.
                            
     Returns:
         torchvision.models.detection.MaskRCNN: The PyTorch model.

@@ -5,7 +5,7 @@ import torch
 import torchvision
 from tqdm import tqdm
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10):
     """
@@ -159,9 +159,16 @@ def evaluate(model, data_loader, device):
             
     results = metric.compute()
     
+    # Classes are 1=Metal, 2=Paper, 3=Plastic (no background class in dataset)
+    class_labels = [1, 2, 3]
+    class_names = ['Metal', 'Paper', 'Plastic']
+    
     # Compute confusion matrix
-    # Classes are 0=Background, 1=Metal, 2=Paper, 3=Plastic
-    cm = confusion_matrix(all_y_true, all_y_pred, labels=[0, 1, 2, 3])
+    cm = confusion_matrix(all_y_true, all_y_pred, labels=class_labels)
+    
+    # Compute per-class F1 scores
+    f1_scores = f1_score(all_y_true, all_y_pred, labels=class_labels, average=None, zero_division=0)
+    f1_dict = {name: float(score) for name, score in zip(class_names, f1_scores)}
     
     map_dict = {
         "map": results["map"].item(),
@@ -170,6 +177,7 @@ def evaluate(model, data_loader, device):
     }
     
     print(f"Evaluation Results -> mAP (IoU=0.50:0.95): {map_dict['map']:.4f}, mAP@50: {map_dict['map_50']:.4f}")
+    print(f"F1 Scores -> Metal: {f1_dict['Metal']:.4f}, Paper: {f1_dict['Paper']:.4f}, Plastic: {f1_dict['Plastic']:.4f}")
     
-    return map_dict, cm
+    return map_dict, cm, f1_dict
     

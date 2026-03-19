@@ -40,9 +40,9 @@ def main():
         )
 
     # Device configuration
-device = torch.device("mps") if torch.backends.mps.is_available() else \
-         torch.device("cuda") if torch.cuda.is_available() else \
-         (_ for _ in ()).throw(RuntimeError("No GPU backend (MPS/CUDA) available"))
+    device = torch.device("mps") if torch.backends.mps.is_available() else \
+            torch.device("cuda") if torch.cuda.is_available() else \
+            (_ for _ in ()).throw(RuntimeError("No GPU backend (MPS/CUDA) available"))
              
     print(f"Using device: {device}")
 
@@ -80,7 +80,7 @@ device = torch.device("mps") if torch.backends.mps.is_available() else \
     )
     
     # 3. Initialize Model
-    # 4 classes: 0=Background, 1=Metal, 2=Paper, 3=Plastic
+    # 4 classes: 3 object classes (Metal, Paper, Plastic) + 1 Mask R-CNN internal background
     NUM_CLASSES = 4 
     print(f"Building Mask R-CNN model for {NUM_CLASSES} classes...")
     model = get_mask_rcnn_model(num_classes=NUM_CLASSES)
@@ -103,6 +103,8 @@ device = torch.device("mps") if torch.backends.mps.is_available() else \
     metrics_dir.mkdir(parents=True, exist_ok=True)
     
     epoch_losses = []
+    # Track per-class F1 scores across epochs
+    f1_history = {'Metal': [], 'Paper': [], 'Plastic': []}
     
     for epoch in range(NUM_EPOCHS):
         avg_loss = train_one_epoch(model, optimizer, data_loader_train, device, epoch, print_freq=10)
@@ -121,16 +123,35 @@ device = torch.device("mps") if torch.backends.mps.is_available() else \
         plt.close()
         
         # Evaluate model after epoch
-        map_dict, cm = evaluate(model, data_loader_valid, device)
+        map_dict, cm, f1_dict = evaluate(model, data_loader_valid, device)
+        
+        # Track F1 scores
+        for cls_name in f1_history:
+            f1_history[cls_name].append(f1_dict[cls_name])
         
         # Plot Confusion Matrix
         plt.figure(figsize=(8, 6))
-        class_names = ['Background', 'Metal', 'Paper', 'Plastic']
+        class_names = ['Metal', 'Paper', 'Plastic']
         sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
         plt.title(f'Confusion Matrix - Epoch {epoch}')
         plt.xlabel('Predicted Label')
         plt.ylabel('True Label')
         plt.savefig(metrics_dir / f"epoch_{epoch}_confusion_matrix.png")
+        plt.close()
+        
+        # Plot F1 Score Graph (per-class over epochs)
+        plt.figure(figsize=(8, 6))
+        colors = {'Metal': '#e74c3c', 'Paper': '#2ecc71', 'Plastic': '#3498db'}
+        for cls_name, scores in f1_history.items():
+            plt.plot(range(len(scores)), scores, marker='o', linestyle='-', 
+                     color=colors[cls_name], label=cls_name)
+        plt.title('Per-Class F1 Score vs Epochs')
+        plt.xlabel('Epoch')
+        plt.ylabel('F1 Score')
+        plt.ylim(0, 1.05)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(metrics_dir / "f1_score_curve.png")
         plt.close()
         
     # 6. Save internal checkpoint

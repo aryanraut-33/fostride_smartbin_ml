@@ -11,6 +11,9 @@ class CocoSegmentationDataset(Dataset):
     Custom PyTorch Dataset for loading Roboflow COCO Segmentation data.
     Expected format is a directory containing images and a single `_annotations.coco.json` file.
     """
+    # These are the only valid object classes (excluding the supercategory)
+    VALID_CLASS_IDS = {1, 2, 3}  # metal, paper, plastic
+    
     def __init__(self, root_dir: str, transforms=None):
         self.root_dir = root_dir
         self.transforms = transforms
@@ -22,14 +25,21 @@ class CocoSegmentationDataset(Dataset):
         with open(annotation_path, "r") as f:
             self.coco_data = json.load(f)
             
-        # Map category names to IDs
-        self.categories = {cat["id"]: cat["name"] for cat in self.coco_data["categories"]}
+        # Map category names to IDs (exclude the supercategory 'metal-paper-plastic')
+        self.categories = {
+            cat["id"]: cat["name"]
+            for cat in self.coco_data["categories"]
+            if cat["id"] in self.VALID_CLASS_IDS
+        }
         
-        # Build image records (only images with annotations)
+        # Build image records (only images with valid annotations)
         self.images = []
         self.img_to_anns = {}
         
         for ann in self.coco_data["annotations"]:
+            # Skip annotations for the supercategory (category_id=0)
+            if ann["category_id"] not in self.VALID_CLASS_IDS:
+                continue
             img_id = ann["image_id"]
             if img_id not in self.img_to_anns:
                 self.img_to_anns[img_id] = []
@@ -80,7 +90,7 @@ class CocoSegmentationDataset(Dataset):
             areas = torch.as_tensor(areas, dtype=torch.float32)
             iscrowd = torch.as_tensor(iscrowd, dtype=torch.int64)
         else:
-            # Handle empty annotation lists (shouldn't happen based on our init filter)
+            # Handle empty annotation lists (e.g. background images)
             boxes = torch.zeros((0, 4), dtype=torch.float32)
             labels = torch.zeros((0,), dtype=torch.int64)
             masks = torch.zeros((0, img_info["height"], img_info["width"]), dtype=torch.uint8)
