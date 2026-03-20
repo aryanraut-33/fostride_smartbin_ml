@@ -155,7 +155,7 @@ def main():
         plt.close()
         
     # 6. Save internal checkpoint
-    save_path = PROJECT_ROOT / "models" / "best_m1_baseline.pth"
+    save_path = PROJECT_ROOT / "models" / "best_m1_baseline.pt"
     torch.save(model.state_dict(), save_path)
     print(f"\nTraining Complete. Model saved to {save_path}")
 
