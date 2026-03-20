@@ -110,4 +110,78 @@ During training, the pipeline automatically evaluates the model at the end of ev
 - **Confusion Matrix:** Tracks True Positives, False Positives, and False Negatives via IoU matching (>0.5) and plots a 4x4 Confusion Matrix for the classes.
 - **Loss Curve:** Plots the training curve across all epochs.
 
-All plots are automatically generated, saved, and updated iteratively in the `smart_bin_aryan/models/aryan/metrics/` directory during execution!
+All plots are automatically generated, saved, and updated iteratively in the `smart_bin_aryan/models/aryan/metrics/` directory during execution.
+
+---
+
+## 🤝 For Collaborators: How to Contribute
+
+Instead of modifying the `aryan` baseline model, you will create your own modular model pipeline inside your personal folder. 
+
+### 1. Git Workflow (Branching)
+Always work on your own branch. Do not push directly to `main`.
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/aryanraut-33/fostride_smartbin_ml.git
+   cd fostride_smartbin_ml/smart_bin_aryan
+   ```
+2. **Create and checkout your own branch:**
+   ```bash
+   # Replace <your-name> with your actual name
+   git checkout -b feature/<your-name>-model
+   ```
+3. **Commit and push your changes:**
+   ```bash
+   git add .
+   git commit -m "Add <your-name> custom model architecture"
+   git push origin feature/<your-name>-model
+   ```
+
+### 2. Creating Your Model Directory
+Your models and scripts must live inside `smart_bin_aryan/models/<your-name>/` to prevent conflicts.
+
+```
+smart_bin_aryan/
+├── models/
+│   ├── aryan/          # Aryan's baseline models (DO NOT EDIT)
+│   └── <your-name>/    # Create this folder for your models!
+│       ├── my_custom_model.py
+│       └── metrics/
+```
+
+### 3. IMPORTANT: Dataset Loading
+**You must train exclusively on the official loaded dataset.** Do not download data manually.
+
+We provide a custom PyTorch dataset loader that correctly handles the 3 waste classes (Metal, Paper, Plastic) plus the background, and correctly translates bounding boxes and segmentation polygons.
+
+To load the data in your training script, simply import and use:
+```python
+from src.data.coco_dataset import CocoSegmentationDataset
+
+# Ensure you use a custom collate_fn for detection models
+def collate_fn(batch): return tuple(zip(*batch))
+```
+*(Reference `models/aryan/m1_baseline.py` for a complete example of setting up the DataLoader and Transforms).*
+
+## 🚀 Running on Colab
+If you are developing locally but want to train on Colab, you can run your modular script directly!
+
+1. Open a new Google Colab notebook.
+2. Ensure GPU is enabled (`Runtime` > `Change runtime type` > `GPU` or `T4 GPU`).
+3. Run the following in cell blocks:
+
+```python
+# Clone and enter the directory
+!git clone https://github.com/aryanraut-33/fostride_smartbin_ml.git
+%cd fostride_smartbin_ml/smart_bin_aryan
+
+# Install dependencies
+!pip install torch torchvision matplotlib seaborn pycocotools
+
+# Download dataset (Requires ROBOFLOW_API_KEY in colab secrets or pasted directly)
+!python -m src.data.download_raw
+
+# Train YOUR model
+!python models/<your-name>/my_custom_model.py
+```
